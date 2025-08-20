@@ -3,6 +3,7 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { PlacesContainerComponent } from '../places-container/places-container.component';
 import { PlacesComponent } from '../places.component';
 import { PlacesService } from '../places.service';
+import { Place } from '../place.model';
 
 @Component({
   selector: 'app-user-places',
@@ -13,13 +14,12 @@ import { PlacesService } from '../places.service';
 })
 export class UserPlacesComponent implements OnInit {
   private readonly placesService = inject(PlacesService);
-  
+
   isFetching = signal(false);
   error = signal<string | null>(null);
   private readonly destroyRef = inject(DestroyRef);
 
   places = this.placesService.loadedUserPlaces;
-
 
   ngOnInit() {
     this.isFetching.set(true);
@@ -31,6 +31,15 @@ export class UserPlacesComponent implements OnInit {
         this.isFetching.set(false);
       },
     });
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
+
+  onRemovePlace(place: Place) {
+    this.isFetching.set(true);
+    const subscription = this.placesService.removeUserPlace(place).subscribe();
 
     this.destroyRef.onDestroy(() => {
       subscription.unsubscribe();
