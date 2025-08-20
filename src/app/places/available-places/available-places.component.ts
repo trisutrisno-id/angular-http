@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Place } from '../place.model';
 import { PlacesComponent } from '../places.component';
 import { PlacesContainerComponent } from '../places-container/places-container.component';
-import { catchError, map, throwError } from 'rxjs';
+import { PlacesService } from '../places.service';
 
 @Component({
   selector: 'app-available-places',
@@ -19,31 +19,23 @@ export class AvailablePlacesComponent implements OnInit {
   private readonly httpClient = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly placesService = inject(PlacesService);
+
   // constructor(private http: HttpClient) {}}
 
   ngOnInit() {
     this.isFetching.set(true);
-    const subscription = this.httpClient
-      .get<{ places: Place[] }>('http://localhost:3000/places')
-      .pipe(
-        map((resData) => resData.places),
-        catchError((error) => {
-          return throwError(
-            () => new Error('Failed to fetch places. Please try again later')
-          );
-        })
-      )
-      .subscribe({
-        next: (places) => {
-          this.places.set(places || []);
-        },
-        error: (err: Error) => {
-          this.error.set(err.message);
-        },
-        complete: () => {
-          this.isFetching.set(false);
-        },
-      });
+    const subscription = this.placesService.loadAvailablePlaces().subscribe({
+      next: (places) => {
+        this.places.set(places || []);
+      },
+      error: (err: Error) => {
+        this.error.set(err.message);
+      },
+      complete: () => {
+        this.isFetching.set(false);
+      },
+    });
 
     this.destroyRef.onDestroy(() => {
       subscription.unsubscribe();
@@ -51,17 +43,17 @@ export class AvailablePlacesComponent implements OnInit {
   }
 
   onSelectPlace(selectedPlace: Place) {
-    this.httpClient
-      .put(`http://localhost:3000/user-places`, {
-        placeId: selectedPlace.id,
-      })
-      .subscribe({
-        next: (resData) => {
-          console.log('Place selected successfully', resData);
-        },
-        error: (err: Error) => {
-          console.error('Error selecting place:', err.message);
-        },
-      });
+    const subscription = this.placesService.addPlaceToUserPlaces(selectedPlace.id).subscribe({
+      next: (resData) => {
+        console.log('Place selected successfully', resData);
+      },
+      error: (err: Error) => {
+        console.error('Error selecting place:', err.message);
+      },
+    });
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
   }
 }

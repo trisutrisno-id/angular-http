@@ -3,8 +3,7 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { PlacesContainerComponent } from '../places-container/places-container.component';
 import { PlacesComponent } from '../places.component';
 import { Place } from '../place.model';
-import { HttpClient } from '@angular/common/http';
-import { catchError, map, throwError } from 'rxjs';
+import { PlacesService } from '../places.service';
 
 @Component({
   selector: 'app-user-places',
@@ -14,39 +13,29 @@ import { catchError, map, throwError } from 'rxjs';
   imports: [PlacesContainerComponent, PlacesComponent],
 })
 export class UserPlacesComponent implements OnInit {
+  isFetching = signal(false);
+  places = signal<Place[] | undefined>(undefined);
+  error = signal<string | null>(null);
+  private readonly destroyRef = inject(DestroyRef);
 
-    isFetching = signal(false);
-    places = signal<Place[] | undefined>(undefined);
-    error = signal<string | null>(null);
-    private readonly httpClient = inject(HttpClient);
-    private readonly destroyRef = inject(DestroyRef);
+  private readonly placesService = inject(PlacesService);
 
-    ngOnInit() {
-      this.isFetching.set(true);
-      const subscription = this.httpClient
-        .get<{ places: Place[] }>('http://localhost:3000/user-places')
-        .pipe(
-          map((resData) => resData.places),
-          catchError((error) => {
-            return throwError(
-              () => new Error('Failed to fetch places your favorite places. Please try again later')
-            );
-          })
-        )
-        .subscribe({
-          next: (places) => {
-            this.places.set(places || []);
-          },
-          error: (err: Error) => {
-            this.error.set(err.message);
-          },
-          complete: () => {
-            this.isFetching.set(false);
-          },
-        });
-  
-      this.destroyRef.onDestroy(() => {
-        subscription.unsubscribe();
-      });
-    }
+  ngOnInit() {
+    this.isFetching.set(true);
+    const subscription = this.placesService.loadUserPlaces().subscribe({
+      next: (places) => {
+        this.places.set(places || []);
+      },
+      error: (err: Error) => {
+        this.error.set(err.message);
+      },
+      complete: () => {
+        this.isFetching.set(false);
+      },
+    });
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
 }
