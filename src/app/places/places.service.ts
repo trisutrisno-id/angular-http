@@ -3,11 +3,13 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Place } from './place.model';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, tap, throwError } from 'rxjs';
+import { ErrorService } from '../shared/error.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PlacesService {
+  private errorService = inject(ErrorService);
   private userPlaces = signal<Place[]>([]);
 
   private readonly httpClient = inject(HttpClient);
@@ -38,7 +40,9 @@ export class PlacesService {
     const prevPlaces = this.userPlaces();
 
     if (prevPlaces.some((p) => p.id === place.id)) {
-      return throwError(() => new Error('Place already exists in your favorites'));
+      return throwError(
+        () => new Error('Place already exists in your favorites')
+      );
     }
 
     this.userPlaces.set([...prevPlaces, place]);
@@ -51,8 +55,11 @@ export class PlacesService {
         catchError((error) => {
           this.userPlaces.set(prevPlaces);
 
+          this.errorService.showError('Failed to add place to your favorites');
+
           return throwError(
-            () => new Error('Failed to add place to your favorites', error.message)
+            () =>
+              new Error('Failed to add place to your favorites', error.message)
           );
         })
       );
