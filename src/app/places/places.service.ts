@@ -8,7 +8,7 @@ import { catchError, map, tap, throwError } from 'rxjs';
   providedIn: 'root',
 })
 export class PlacesService {
-  private readonly userPlaces = signal<Place[]>([]);
+  private userPlaces = signal<Place[]>([]);
 
   private readonly httpClient = inject(HttpClient);
 
@@ -32,9 +32,12 @@ export class PlacesService {
     }));
   }
 
-  addPlaceToUserPlaces(placeId: string) {
+  addPlaceToUserPlaces(place: Place) {
+    console.log("🚀 ~ PlacesService ~ addPlaceToUserPlaces ~ place:", place)
+    this.userPlaces.update((prevPlaces) => [...prevPlaces, place]);
+
     return this.httpClient.put(`http://localhost:3000/user-places`, {
-      placeId: placeId,
+      placeId: place.id,
     });
   }
 
