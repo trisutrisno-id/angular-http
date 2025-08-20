@@ -25,20 +25,37 @@ export class PlacesService {
     return this.fetchPlaces(
       'http://localhost:3000/user-places',
       'Failed to fetch your favorite places'
-    ).pipe(tap({
-      next: (userPlaces) => {
-        this.userPlaces.set(userPlaces);
-      },
-    }));
+    ).pipe(
+      tap({
+        next: (userPlaces) => {
+          this.userPlaces.set(userPlaces);
+        },
+      })
+    );
   }
 
   addPlaceToUserPlaces(place: Place) {
-    console.log("🚀 ~ PlacesService ~ addPlaceToUserPlaces ~ place:", place)
-    this.userPlaces.update((prevPlaces) => [...prevPlaces, place]);
+    const prevPlaces = this.userPlaces();
 
-    return this.httpClient.put(`http://localhost:3000/user-places`, {
-      placeId: place.id,
-    });
+    if (prevPlaces.some((p) => p.id === place.id)) {
+      return throwError(() => new Error('Place already exists in your favorites'));
+    }
+
+    this.userPlaces.set([...prevPlaces, place]);
+
+    return this.httpClient
+      .put(`http://localhost:3000/user-places`, {
+        placeId: place.id,
+      })
+      .pipe(
+        catchError((error) => {
+          this.userPlaces.set(prevPlaces);
+
+          return throwError(
+            () => new Error('Failed to add place to your favorites', error.message)
+          );
+        })
+      );
   }
 
   removeUserPlace(place: Place) {}
